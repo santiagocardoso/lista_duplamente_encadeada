@@ -270,6 +270,7 @@ int inserir(Desc *desc, char *palavra, int lin, int col) {
                 aux->antes->proximo = no;
                 aux->antes = no;
 
+
                 return 1;
             }
             aux = aux->proximo;
