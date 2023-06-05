@@ -319,7 +319,7 @@ int inserir(Desc *desc, char *palavra, int lin, int col) {
         while (aux) {
             if (aux->linha == lin && aux->coluna == col) { // caso chegue na linha e coluna indicadas, realiza a insercao
                 No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra); // cria um novo no com a nova palavra
-                if (lin == 0 && col == 0) { // comeco da linha
+                if (col == 0) { // comeco da linha
                     no->proximo = aux;
                     multilista->linha = no;
                     aux->antes = no;
