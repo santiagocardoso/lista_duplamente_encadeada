@@ -14,7 +14,8 @@ void menu() {
     printf("[07] Quantidade de palavras\n");
     printf("[08] Edicao de palavra (lin/col)\n");
     printf("[09] Inserir palavra\n");
-    printf("[10] Palavras com uma substring\n");
+    printf("[10] Inserir no fim\n");
+    printf("[11] Palavras com uma substring\n");
     printf("[00] Sair\n");
     printf("-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-\n");
 }
@@ -58,7 +59,7 @@ void le_arquivo(FILE *arquivo, Desc **desc) {
 
     No *aux = NULL;
 
-   while (fgets(linha, sizeof(linha), arquivo)) {
+    while (fgets(linha, sizeof(linha), arquivo)) {
         linha[strcspn(linha, "\n")] = '\0';
 
         char* token = strtok(linha, " ");
@@ -87,6 +88,7 @@ void le_arquivo(FILE *arquivo, Desc **desc) {
         multaux->abaixo = multilista;
         multilista->cima = multaux;
         multaux = multilista;
+        aux = NULL;
     }
 
     (*desc)->num_linhas = i;
@@ -104,26 +106,25 @@ void imprime_ldde(Desc *desc) {
     if (!verifica(desc))
         return;
 
-    printf("-=-=-=-=-=-=-  LDDE  -=-=-=-=-=-=-\n");
+    printf("[Desc|%d]->", desc->num_linhas);
     Multilista *multilista = desc->multilista;
     while (multilista) {
+        printf("[%d]->", multilista->num_palavras);
         No *aux = multilista->linha;
         while (aux) {
-            printf("\n%s\n", aux->palavra);
-            printf("Linha: %d\n", aux->linha);
-            printf("Coluna: %d\n", aux->coluna);
+            printf("[%s|%d|%d]->", aux->palavra, aux->linha, aux->coluna);
             aux = aux->proximo;
         }
+        printf("//\n          ");
         multilista = multilista->abaixo;
     }
-    printf("-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-\n\n");
+    printf("\n");
 }
 
 void imprime_original(Desc *desc) {
     if (!verifica(desc))
         return;
 
-    printf("-=-=-=-=- TEXTO ORIGINAL -=-=-=-=-\n");
     Multilista *multilista = desc->multilista;
     while (multilista->abaixo) {
         No *aux = multilista->linha;
@@ -131,9 +132,10 @@ void imprime_original(Desc *desc) {
             printf("%s ", aux->palavra);
             aux = aux->proximo;
         }
+        printf("\n");
         multilista = multilista->abaixo;
     }
-    printf("\n-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-\n\n");
+    printf("\n");
 }
 
 void buscar_palavra(Desc *desc, char* palavra, int *lin, int *col) {
@@ -155,6 +157,20 @@ void buscar_palavra(Desc *desc, char* palavra, int *lin, int *col) {
     }
 }
 
+void corrige_num_coluna(Multilista *multilista) {
+    No *no = multilista->linha;
+    int tamanho = 0;
+    int coluna = 0;
+    while (no) {
+        if (no->coluna != coluna)
+            no->coluna = coluna;
+        
+        tamanho = strlen(no->palavra);
+        coluna += strlen(no->palavra) + 1;
+        no = no->proximo;
+    }
+}
+
 int remover_palavra(Desc *desc, char *palavra) {
     if (!verifica(desc))
         return 0;
@@ -164,12 +180,29 @@ int remover_palavra(Desc *desc, char *palavra) {
         No *aux = multilista->linha;
         while (aux) {
             if (strcmp(palavra, aux->palavra) == 0) {
-                aux->antes->proximo = aux->proximo;
-                aux->proximo->antes = aux->antes;
-                free(aux);
+                if (!aux->proximo) {
+                    aux->antes->proximo = NULL;
+                    free(aux);
+                }
+                else if (aux->antes) {
+                    aux->antes->proximo = aux->proximo;
+                    aux->proximo->antes = aux->antes;
+                    free(aux);
+                }
+                else {
+                    multilista->linha = aux->proximo;
+                    aux->proximo->antes = NULL;
+                    free(aux);
+                }
+
+                multilista->num_palavras--;
+                corrige_num_coluna(multilista);
+
                 return 1;
             }
             aux = aux->proximo;
+
+            
         }
         multilista = multilista->abaixo;
     }
@@ -185,12 +218,30 @@ int remover_palavra_lin_col(Desc *desc, int lin, int col) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (aux->linha == lin && aux->coluna == col) {
+            if (aux->linha == lin && aux->coluna == col && !aux->proximo) {
+                aux->antes->proximo = NULL;;
+                free(aux);
+                multilista->num_palavras--;
+                corrige_num_coluna(multilista);
+                return 1;
+            }
+            else if (aux->linha == lin && aux->coluna == col && aux->antes) {
                 aux->antes->proximo = aux->proximo;
                 aux->proximo->antes = aux->antes;
                 free(aux);
+                multilista->num_palavras--;
+                corrige_num_coluna(multilista);
                 return 1;
             }
+            else if (aux->linha == lin && aux->coluna == col && !aux->antes) {
+                multilista->linha = aux->proximo;
+                aux->proximo->antes = NULL;
+                free(aux);
+                multilista->num_palavras--;
+                corrige_num_coluna(multilista);
+                return 1;
+            }
+
             aux = aux->proximo;
         }
         multilista = multilista->abaixo;
@@ -245,6 +296,9 @@ int editar(Desc *desc, int lin, int col) {
                 printf("Digite a nova palavra: ");
                 scanf("%s", palavra);
                 strcpy(aux->palavra, palavra);
+
+                corrige_num_coluna(multilista);
+
                 return 1;
             }
             aux = aux->proximo;
@@ -265,11 +319,22 @@ int inserir(Desc *desc, char *palavra, int lin, int col) {
         while (aux) {
             if (aux->linha == lin && aux->coluna == col) {
                 No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra);
-                no->proximo = aux;
-                no->antes = aux->antes;
-                aux->antes->proximo = no;
-                aux->antes = no;
+                if (lin == 0 && col == 0) {
+                    no->proximo = aux;
+                    multilista->linha = no;
+                    aux->antes = no;
 
+                    corrige_num_coluna(multilista);
+                }
+                else {
+                    no->proximo = aux;
+                    no->antes = aux->antes;
+                    aux->antes->proximo = no;
+                    aux->antes = no;
+
+                    corrige_num_coluna(multilista);
+                }
+                multilista->num_palavras++;
 
                 return 1;
             }
@@ -279,4 +344,72 @@ int inserir(Desc *desc, char *palavra, int lin, int col) {
     }
 
     return 0;
+}
+
+int inserir_no_fim(Desc *desc, char *palavra, int lin) {
+    if (!verifica(desc))
+        return 0;
+
+    Multilista *multilista = desc->multilista;
+    while (multilista->abaixo) {
+        No *aux = multilista->linha;
+        while (aux) {
+            if (aux->linha == lin && aux->proximo == NULL) {
+                No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra);
+                no->antes = aux;
+                aux->proximo = no;
+                multilista->num_palavras++;
+
+                corrige_num_coluna(multilista);
+                
+                return 1;
+            }
+            aux = aux->proximo;
+        }
+        multilista = multilista->abaixo;
+    }
+
+    return 0;
+}
+
+void substring(Desc *desc, char *palavra) {
+    if (!verifica(desc))
+        return;
+
+    int quant = 0;
+    Multilista *multilista = desc->multilista;
+    printf("[L|C]\n");
+    while (multilista->abaixo) {
+        No *aux = multilista->linha;
+        while (aux) {
+            if (strcmp(palavra, aux->palavra) == 0) {
+                printf("[%d|%d]\n", aux->linha, aux->coluna);
+                quant++;
+            }
+            aux = aux->proximo;
+        }
+        multilista = multilista->abaixo;
+    }
+    printf("Ocorrencias: %d\n\n", quant);
+}
+
+void copiar_multilista_para_arquivo(Desc *desc, char *nome_arquivo) {
+    FILE *arquivo = fopen(nome_arquivo, "w");
+    if (!arquivo) {
+        printf("ERROR: Não foi possível criar o arquivo.\n");
+        return;
+    }
+
+    Multilista *multilista = desc->multilista;
+    while (multilista->abaixo) {
+        No *no = multilista->linha;
+        while (no) {
+            fprintf(arquivo, "%s ", no->palavra);
+            no = no->proximo;
+        }
+        fprintf(arquivo, "\n");
+        multilista = multilista->abaixo;
+    }
+
+    fclose(arquivo);
 }
