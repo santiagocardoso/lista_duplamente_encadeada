@@ -59,42 +59,42 @@ void le_arquivo(FILE *arquivo, Desc **desc) {
 
     No *aux = NULL;
 
-    while (fgets(linha, sizeof(linha), arquivo)) {
-        linha[strcspn(linha, "\n")] = '\0';
+    while (fgets(linha, sizeof(linha), arquivo)) { // acessa todas as linhas do arquivo
+        linha[strcspn(linha, "\n")] = '\0'; // troca o caractere '\n' por '\0' no final de cada linha
 
-        char* token = strtok(linha, " ");
+        char* token = strtok(linha, " "); // separa a linha em tokens
         while (token) {
             No* no = inicializa_no(i, col, token);
             if (aux) {
                 no->antes = aux;
                 aux->proximo = no;
             }
-            else
+            else // caso aux seja nulo, inicia a estrutura
                 multaux->linha = no;
 
-            col += strlen(token) + 1;
+            col += strlen(token) + 1; // insere a posicao correta da coluna de cada palavra
             num++;
 
             token = strtok(NULL, " ");
 
             aux = no;
         }
-        multaux->num_palavras = num;
+        multaux->num_palavras = num; // insere o numero de palavras da linha
         num = 0;
         col = 0;
         i++;
 
-        Multilista* multilista = inicializa_multilista();
-        multaux->abaixo = multilista;
+        Multilista* multilista = inicializa_multilista(); // inicializa uma nova multilista
+        multaux->abaixo = multilista; // faz o encadeamento das multilistas
         multilista->cima = multaux;
         multaux = multilista;
         aux = NULL;
     }
 
-    (*desc)->num_linhas = i;
+    (*desc)->num_linhas = i; // insere o numero de linhas do arquivo no descritor
 }
 
-int verifica(Desc *desc) {
+int verifica(Desc *desc) { // verifica se a estrutura foi inicializada
     if (!desc->multilista || !desc->multilista->linha) {
         printf("LDDE nao iniciada!\n");
         return 0;
@@ -102,7 +102,7 @@ int verifica(Desc *desc) {
     return 1;
 }
 
-void imprime_ldde(Desc *desc) {
+void imprime_ldde(Desc *desc) { // imprime no formato da ldde
     if (!verifica(desc))
         return;
 
@@ -121,7 +121,7 @@ void imprime_ldde(Desc *desc) {
     printf("\n");
 }
 
-void imprime_original(Desc *desc) {
+void imprime_original(Desc *desc) { // imprime no formato do texto original
     if (!verifica(desc))
         return;
 
@@ -146,7 +146,7 @@ void buscar_palavra(Desc *desc, char* palavra, int *lin, int *col) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (strcmp(palavra, aux->palavra) == 0) {
+            if (strcmp(palavra, aux->palavra) == 0) { // se encontrar a palavra retorna sua linha e coluna
                 *lin = aux->linha;
                 *col = aux->coluna;
                 return;
@@ -157,16 +157,16 @@ void buscar_palavra(Desc *desc, char* palavra, int *lin, int *col) {
     }
 }
 
-void corrige_num_coluna(Multilista *multilista) {
+void corrige_num_coluna(Multilista *multilista) { // apos ocorrer uma insercao ou remocao de uma palavra, corrige a posicao da coluna dos seguintes nos da estrutura
     No *no = multilista->linha;
     int tamanho = 0;
     int coluna = 0;
     while (no) {
-        if (no->coluna != coluna)
+        if (no->coluna != coluna) // caso a coluna esteja errada faz a correcao
             no->coluna = coluna;
         
-        tamanho = strlen(no->palavra);
-        coluna += strlen(no->palavra) + 1;
+        tamanho = strlen(no->palavra); // tamanho da palavra
+        coluna += strlen(no->palavra) + 1; // posicao da coluna
         no = no->proximo;
     }
 }
@@ -180,16 +180,16 @@ int remover_palavra(Desc *desc, char *palavra) {
         No *aux = multilista->linha;
         while (aux) {
             if (strcmp(palavra, aux->palavra) == 0) {
-                if (!aux->proximo) {
+                if (!aux->proximo) { // caso seja o fim da linha
                     aux->antes->proximo = NULL;
                     free(aux);
                 }
-                else if (aux->antes) {
+                else if (aux->antes) { // caso seja no meio da linha
                     aux->antes->proximo = aux->proximo;
                     aux->proximo->antes = aux->antes;
                     free(aux);
                 }
-                else {
+                else { // caso seja no comeco da linha
                     multilista->linha = aux->proximo;
                     aux->proximo->antes = NULL;
                     free(aux);
@@ -218,14 +218,14 @@ int remover_palavra_lin_col(Desc *desc, int lin, int col) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (aux->linha == lin && aux->coluna == col && !aux->proximo) {
+            if (aux->linha == lin && aux->coluna == col && !aux->proximo) { // caso seja o fim da linha
                 aux->antes->proximo = NULL;;
                 free(aux);
                 multilista->num_palavras--;
                 corrige_num_coluna(multilista);
                 return 1;
             }
-            else if (aux->linha == lin && aux->coluna == col && aux->antes) {
+            else if (aux->linha == lin && aux->coluna == col && aux->antes) { // caso seja o meio da linha
                 aux->antes->proximo = aux->proximo;
                 aux->proximo->antes = aux->antes;
                 free(aux);
@@ -233,7 +233,7 @@ int remover_palavra_lin_col(Desc *desc, int lin, int col) {
                 corrige_num_coluna(multilista);
                 return 1;
             }
-            else if (aux->linha == lin && aux->coluna == col && !aux->antes) {
+            else if (aux->linha == lin && aux->coluna == col && !aux->antes) { // caso seja o comeco da linha
                 multilista->linha = aux->proximo;
                 aux->proximo->antes = NULL;
                 free(aux);
@@ -254,12 +254,12 @@ int ocorrencias(Desc *desc, char *palavra) {
     if (!verifica(desc))
         return 0;
 
-    int cont = 0;
+    int cont = 0; // contador de ocorrencias
     Multilista *multilista = desc->multilista;
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (strcmp(palavra, aux->palavra) == 0)
+            if (strcmp(palavra, aux->palavra) == 0) // caso encontre a palavra aumenta o contador de ocorrencias
                 cont++;
             aux = aux->proximo;
         }
@@ -273,11 +273,11 @@ int total_palavras(Desc *desc) {
     if (!verifica(desc))
         return 0;
 
-    int cont = 0;
+    int cont = 0; // contador de palavras
     Multilista *multilista = desc->multilista;
     while (multilista->abaixo) {
-        cont += multilista->num_palavras;
-        multilista = multilista->abaixo;
+        cont += multilista->num_palavras; // incrementa o contador de palavras
+        multilista = multilista->abaixo; // vai para a proxima multilista, ou seja, proxima linha
     }
 
     return cont;
@@ -291,13 +291,13 @@ int editar(Desc *desc, int lin, int col) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (aux->linha == lin && aux->coluna == col) {
+            if (aux->linha == lin && aux->coluna == col) { // caso chegue na linha e coluna indicadas, realiza a alteracao
                 char palavra[50];
                 printf("Digite a nova palavra: ");
                 scanf("%s", palavra);
-                strcpy(aux->palavra, palavra);
+                strcpy(aux->palavra, palavra); // troca a palavra para a nova palavra indicada
 
-                corrige_num_coluna(multilista);
+                corrige_num_coluna(multilista); // corrige as seguintes colunas com base no tamanho da nova palavra
 
                 return 1;
             }
@@ -317,16 +317,16 @@ int inserir(Desc *desc, char *palavra, int lin, int col) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (aux->linha == lin && aux->coluna == col) {
-                No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra);
-                if (lin == 0 && col == 0) {
+            if (aux->linha == lin && aux->coluna == col) { // caso chegue na linha e coluna indicadas, realiza a insercao
+                No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra); // cria um novo no com a nova palavra
+                if (lin == 0 && col == 0) { // comeco da linha
                     no->proximo = aux;
                     multilista->linha = no;
                     aux->antes = no;
 
                     corrige_num_coluna(multilista);
                 }
-                else {
+                else { // meio da linha
                     no->proximo = aux;
                     no->antes = aux->antes;
                     aux->antes->proximo = no;
@@ -354,8 +354,8 @@ int inserir_no_fim(Desc *desc, char *palavra, int lin) {
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (aux->linha == lin && aux->proximo == NULL) {
-                No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra);
+            if (aux->linha == lin && aux->proximo == NULL) { // caso chegue no fim da linha, realiza a insercao
+                No* no = inicializa_no(lin, (aux->coluna + strlen(palavra) + 1), palavra); // cria um novo no com a nova palavra
                 no->antes = aux;
                 aux->proximo = no;
                 multilista->num_palavras++;
@@ -372,36 +372,36 @@ int inserir_no_fim(Desc *desc, char *palavra, int lin) {
     return 0;
 }
 
-void substring(Desc *desc, char *palavra) {
+void substring(Desc *desc, char *sub) {
     if (!verifica(desc))
         return;
 
     int quant = 0;
     Multilista *multilista = desc->multilista;
-    printf("[L|C]\n");
+    printf("[L|C]\n"); // [ Linha | Coluna ]
     while (multilista->abaixo) {
         No *aux = multilista->linha;
         while (aux) {
-            if (strcmp(palavra, aux->palavra) == 0) {
-                printf("[%d|%d]\n", aux->linha, aux->coluna);
+            if (strstr(aux->palavra, sub)) { // caso encontre a substring
+                printf("[%d|%d]\n", aux->linha, aux->coluna); // imprime a sua linha e coluna
                 quant++;
             }
             aux = aux->proximo;
         }
         multilista = multilista->abaixo;
     }
-    printf("Ocorrencias: %d\n\n", quant);
+    printf("Ocorrencias: %d\n\n", quant); // imprime o numero de ocorrencias da substring
 }
 
 void copiar_multilista_para_arquivo(Desc *desc, char *nome_arquivo) {
-    FILE *arquivo = fopen(nome_arquivo, "w");
+    FILE *arquivo = fopen(nome_arquivo, "w"); // cria o novo arquivo editavel
     if (!arquivo) {
         printf("ERROR: Não foi possível criar o arquivo.\n");
         return;
     }
 
     Multilista *multilista = desc->multilista;
-    while (multilista->abaixo) {
+    while (multilista->abaixo) { // realiza a copia da estrutura para o arquivo
         No *no = multilista->linha;
         while (no) {
             fprintf(arquivo, "%s ", no->palavra);
